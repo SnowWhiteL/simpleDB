@@ -10,14 +10,19 @@ public class HeapPageId implements PageId {
      * @param tableId The table that is being referenced
      * @param pgNo The page number in that table.
      */
+	private int tableId;
+	private int pgNo;
+	
     public HeapPageId(int tableId, int pgNo) {
-        // some code goes here
+        this.pgNo=pgNo;
+        this.tableId=tableId;
+    	// some code goes here
     }
 
     /** @return the table associated with this PageId */
     public int getTableId() {
         // some code goes here
-        return 0;
+        return tableId;
     }
 
     /**
@@ -26,31 +31,33 @@ public class HeapPageId implements PageId {
      */
     public int getPageNumber() {
         // some code goes here
-        return 0;
+        return pgNo;
     }
 
-    /**
-     * @return a hash code for this page, represented by the concatenation of
-     *   the table number and the page number (needed if a PageId is used as a
-     *   key in a hash table in the BufferPool, for example.)
-     * @see BufferPool
-     */
-    public int hashCode() {
-        // some code goes here
-        throw new UnsupportedOperationException("implement this");
-    }
+    @Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + pgNo;
+		result = prime * result + tableId;
+		return result;
+	}
 
-    /**
-     * Compares one PageId to another.
-     *
-     * @param o The object to compare against (must be a PageId)
-     * @return true if the objects are equal (e.g., page numbers and table
-     *   ids are the same)
-     */
-    public boolean equals(Object o) {
-        // some code goes here
-        return false;
-    }
+    @Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		HeapPageId other = (HeapPageId) obj;
+		if (pgNo != other.pgNo)
+			return false;
+		if (tableId != other.tableId)
+			return false;
+		return true;
+	}
 
     /**
      *  Return a representation of this object as an array of

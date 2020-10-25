@@ -22,8 +22,14 @@ public class HeapFile implements DbFile {
      *            the file that stores the on-disk backing store for this heap
      *            file.
      */
+	private File f;
+	private TupleDesc td;
+	private int id;
     public HeapFile(File f, TupleDesc td) {
-        // some code goes here
+        this.f=f;
+        this.td=td;
+        
+    	// some code goes here
     }
 
     /**
@@ -33,7 +39,7 @@ public class HeapFile implements DbFile {
      */
     public File getFile() {
         // some code goes here
-        return null;
+        return f;
     }
 
     /**
@@ -46,8 +52,9 @@ public class HeapFile implements DbFile {
      * @return an ID uniquely identifying this HeapFile.
      */
     public int getId() {
-        // some code goes here
-        throw new UnsupportedOperationException("implement this");
+        id=f.getAbsoluteFile().hashCode();// some code goes here
+        //throw new UnsupportedOperationException("implement this");
+    	return id;
     }
 
     /**
@@ -57,13 +64,50 @@ public class HeapFile implements DbFile {
      */
     public TupleDesc getTupleDesc() {
         // some code goes here
-        throw new UnsupportedOperationException("implement this");
+        //throw new UnsupportedOperationException("implement this");
+    	return td;
     }
 
     // see DbFile.java for javadocs
-    public Page readPage(PageId pid) {
+    public Page readPage(PageId pid) {///////////////////////////////////////
         // some code goes here
-        return null;
+    	/**
+         * Read the specified page from disk.
+         *
+         * @throws IllegalArgumentException if the page does not exist in this file.
+         */
+    	Page page=null;
+    	byte[] data=new byte[BufferPool.getPageSize()];
+    	
+    	int t=pid.getTableId();
+    	int p=pid.getPageNumber();
+    	try {
+			InputStream is=new FileInputStream(f);
+			int location=p*BufferPool.getPageSize();
+			try {
+				is.skip(location);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			try {
+				is.read(data);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			page=new HeapPage((HeapPageId) pid,data);
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    	
+    	
+    	//Table t=
+        return page;
     }
 
     // see DbFile.java for javadocs
@@ -76,8 +120,9 @@ public class HeapFile implements DbFile {
      * Returns the number of pages in this HeapFile.
      */
     public int numPages() {
+        int numpage=(int) (f.length()/BufferPool.getPageSize());
         // some code goes here
-        return 0;
+        return numpage;
     }
 
     // see DbFile.java for javadocs
@@ -98,8 +143,62 @@ public class HeapFile implements DbFile {
 
     // see DbFile.java for javadocs
     public DbFileIterator iterator(TransactionId tid) {
-        // some code goes here
-        return null;
+        DbFileIterator iterator=new DbFileIterator() {
+/*        	您还需要实现该 HeapFile.iterator()方法，该方法应遍历HeapFile中每个页面的元组。
+ * 迭代器必须使用BufferPool.getPage()方法访问中的页面 HeapFile。此方法将页面加载到缓冲池中，
+ * 并最终（在以后的项目中）将用于实现基于锁定的并发控制和恢复。不要在open（）调用中将整个表加载到内存中-
+ * 这将导致非常大的表出现内存不足错误。
+*/        	private Iterator<Tuple> tupleIterator;
+			private int pgNo;
+			@Override
+			public void open() throws DbException, TransactionAbortedException {
+				pgNo=0;
+				HeapPageId pid=new HeapPageId(getId(), pgNo);
+				HeapPage page=(HeapPage) Database.getBufferPool().getPage(tid, pid, Permissions.READ_ONLY);
+				tupleIterator=page.iterator();
+				// TODO Auto-generated method stub
+				
+			}
+
+			@Override
+			public boolean hasNext() throws DbException, TransactionAbortedException {
+				if(tupleIterator==null) return false;
+				if(tupleIterator.hasNext()) return true;//一页未完成时
+				
+				// TODO Auto-generated method stub
+				if (pgNo < numPages() - 1) {////////////////////////////换一页继续
+					pgNo++;
+	                HeapPageId pid = new HeapPageId(getId(), pgNo);
+	                HeapPage page = (HeapPage) Database.getBufferPool().getPage(tid, pid, Permissions.READ_ONLY);
+	                tupleIterator = page.iterator();
+	                //这时不能直接return ture，有可能返回的新的迭代器是不含有tuple的
+	                return tupleIterator.hasNext();
+	            } else return false;
+			}
+
+			@Override
+			public Tuple next() throws DbException, TransactionAbortedException, NoSuchElementException {
+				// TODO Auto-generated method stub
+				if(!hasNext()) throw new NoSuchElementException("No Such ElementException");
+				else return tupleIterator.next();
+			}
+
+			@Override
+			public void rewind() throws DbException, TransactionAbortedException {
+				// TODO Auto-generated method stub
+				open();
+			}
+
+			@Override
+			public void close() {
+				// TODO Auto-generated method stub
+				pgNo=0;
+				tupleIterator=null;
+			}
+        	
+        };
+    	// some code goes here
+        return iterator ;
     }
 
 }
